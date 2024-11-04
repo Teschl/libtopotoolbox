@@ -814,6 +814,25 @@ TOPOTOOLBOX_API
 void gradient8(float *output, float *dem, float cellsize, int use_mp,
                ptrdiff_t dims[2]);
 
+/**
+   @brief Curvature returns the second numerical derivative (curvature) of a
+   digital elevation model. By default, curvature returns the profile
+   curvature (profc). 
+
+   @param[out] output:
+
+   @param[in] type:
+
+   @param[in] meanfilt:
+
+   @param[in] use_mp:
+
+   @param[in] cellsize:
+
+   @param[in] dims: 
+*/
+void curvature();
+
 /*
   Graphflood
 */
