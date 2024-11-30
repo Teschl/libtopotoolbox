@@ -42,73 +42,104 @@ Reference
   Original Author:  Wolfgang Schwanghart (w.schwanghart[at]geo.uni-potsdam.de)
 */
 TOPOTOOLBOX_API
-void curvature(float *output, float *dem, char type, char useplockproc,
-               int plocksize, char meanfilt, float use_mp, float cellsize,
+void curvature(float *output, float *dem, char type, int useplockproc,
+               int plocksize, int meanfilt, float use_mp, float cellsize,
                ptrdiff_t dims[2]) {
-  // TODO: implement mean filter
+  if (meanfilt) {
+    // TODO: implement mean filter
+    // Should be before looping over whole array instead of on demand since
+    // all neighbors have to ready before applying kernels. Raises issues
+    // with use od dem[] as values source because we cant overwrite the dem.
+  }
 
   // First-order partial derivatives
-  float kernel1[3][3] = {{-1, 0, 1}, {-1, 0, 1}, {-1, 0, 1}};
-  float kernel2[3][3] = {{1, 1, 1}, {0, 0, 0}, {-1, -1, -1}};
+  float kernel1[3][3] = {{-1, 0, 1},  //
+                         {-1, 0, 1},  //
+                         {-1, 0, 1}};
+  float kernel2[3][3] = {{1, 1, 1},  //
+                         {0, 0, 0},  //
+                         {-1, -1, -1}};
   // Second order derivatives according to Evans method (see Olaya 2009)
-  float kernel3[3][3] = {{1, -2, 1}, {1, -2, 1}, {1, -2, 1}};
-  float kernel4[3][3] = {{1, 1, 1}, {-2, -2, -2}, {1, 1, 1}};
-  float kernel5[3][3] = {{-1, 0, 1}, {0, 0, 0}, {1, 0, -1}};
+  float kernel3[3][3] = {{1, -2, 1},  //
+                         {1, -2, 1},  //
+                         {1, -2, 1}};
+  float kernel4[3][3] = {{1, 1, 1},     //
+                         {-2, -2, -2},  //
+                         {1, 1, 1}};
+  float kernel5[3][3] = {{-1, 0, 1},  //
+                         {0, 0, 0},   //
+                         {1, 0, -1}};
 
-  ptrdiff_t i;
+#if TOPOTOOLBOX_OPENMP_VERSION < 30
+  ptrdiff_t col;
 #pragma omp parallel for if (use_mp)
-  for (i = 0; i < dims[0]; i++) {
-    for (ptrdiff_t j; j < dims[1]; j++) {
-      ptrdiff_t position = i * dims[0] + j;
+  for (col = 0; col < dims[1]; col++) {
+    for (ptrdiff_t row = 0; row < dims[0]; row++) {
+#else
+  ptrdiff_t col, row;
+#pragma omp parallel for collapse(2) if (use_mp)
+  for (col = 0; col < dims[1]; col++) {
+    for (row = 0; row < dims[0]; row++) {
+#endif
+      ptrdiff_t index = col * dims[0] + row;
+      if (isnan(dem[index])) continue;
 
+      // apply kernel to cell
       float fx, fy, fxx, fyy, fxy = 0;
-      for (int m = 0; m < 3; m++) {
-        for (int n = 0; n < 3; n++) {
-          if (m + i - 2 < 0 || n + j - 2 < 0 || m + i - 2 >= dims[0] ||
-              n + j - 2 >= dims[1]) {
-            continue;
-          }
-          float dem_value = dem[(i + m - 1) * dims[0] + (j + n - 1)];
-          fx += dem_value * (kernel1[m][n] / (6 * cellsize));
-          fy += dem_value * (kernel1[m][n] / (6 * cellsize));
-          fxx += dem_value * (kernel1[m][n] / (3 * powf(cellsize, 2.0f)));
-          fyy += dem_value * (kernel1[m][n] / (3 * powf(cellsize, 2.0f)));
-          fxy += dem_value * (kernel1[m][n] / (4 * powf(cellsize, 2.0f)));
+      for (int k_col = -1; k_col <= 1; k_col++) {
+        for (int k_row = -1; k_row <= 1; k_row++) {
+
+          // TODO: handle NaNs and out of bounds kernel cells
+
+          ptrdiff_t true_index = (col + k_col) * dims[0] + (row + k_row);
+          float dem_value = dem[true_index];
+          // 1st order partial derivatives:
+          // dz/dx
+          fx += dem_value * (kernel1[k_row][k_col] / (6 * cellsize));
+          // dz/dy
+          fy += dem_value * (kernel1[k_row][k_col] / (6 * cellsize));
+          // 2nd order derivatives according to Evans method (See Olaya 2009)
+          // d2z/dx2
+          fxx +=
+              dem_value * (kernel3[k_row][k_col] / (3 * powf(cellsize, 2.0f)));
+          // d2z/dy2
+          fyy +=
+              dem_value * (kernel4[k_row][k_col] / (3 * powf(cellsize, 2.0f)));
+          // s2z/dxy
+          fxy +=
+              dem_value * (kernel5[k_row][k_col] / (4 * powf(cellsize, 2.0f)));
         }
       }
 
       switch (type) {
         case 0:
           // 'profc'
-          output[position] =
-              -(powf(fx, 2.0f) * fxx + 2.0f * fx * fy * fxy +
-                powf(fy, 2.0f) * fyy) /
-              ((powf(fx, 2.0f) + powf(fy, 2.0f)) *
-               powf((1 + powf(fx, 2.0f) + powf(fx, 2.0f)), 1.5f));
+          output[index] = -(powf(fx, 2.0f) * fxx + 2.0f * fx * fy * fxy +
+                            powf(fy, 2.0f) * fyy) /
+                          ((powf(fx, 2.0f) + powf(fy, 2.0f)) *
+                           powf((1 + powf(fx, 2.0f) + powf(fx, 2.0f)), 1.5f));
         case 1:
           // 'tangc'
-          output[position] =
-              -(powf(fy, 2.0f) * fxx - 2.0f * fx * fy * fxy +
-                powf(fx, 2.0f) * fyy) /
-              ((powf(fx, 2.0f) + powf(fy, 2.0f)) *
-               powf(1.0f + powf(fx, 2.0f) + powf(fy, 2.0f), 0.5f));
+          output[index] = -(powf(fy, 2.0f) * fxx - 2.0f * fx * fy * fxy +
+                            powf(fx, 2.0f) * fyy) /
+                          ((powf(fx, 2.0f) + powf(fy, 2.0f)) *
+                           powf(1.0f + powf(fx, 2.0f) + powf(fy, 2.0f), 0.5f));
           break;
         case 2:
           // 'planc'
-          output[position] = -(powf(fx, 2.0f) + fxx - 2 * fx * fy * fxy +
-                               powf(fx, 2.0f) * fyy) /
-                             (powf(powf(fx, 2.0f) + powf(fy, 2.0f) + 1, 1.5f));
+          output[index] = -(powf(fx, 2.0f) + fxx - 2 * fx * fy * fxy +
+                            powf(fx, 2.0f) * fyy) /
+                          (powf(powf(fx, 2.0f) + powf(fy, 2.0f) + 1, 1.5f));
           break;
         case 3:
           // 'meanc'
-          output[position] =
-              -((1 + powf(fy, 2.0f)) * fxx - 2 * fxy * fx * fy +
-                (1 + powf(fx, 2.0f) * fyy)) /
-              (2 * powf(powf(fx, 2.0f) + powf(fy, 2.0f) + 1, 1.5f));
+          output[index] = -((1 + powf(fy, 2.0f)) * fxx - 2 * fxy * fx * fy +
+                            (1 + powf(fx, 2.0f) * fyy)) /
+                          (2 * powf(powf(fx, 2.0f) + powf(fy, 2.0f) + 1, 1.5f));
           break;
         case 4:
           // 'total'
-          output[position] =
+          output[index] =
               powf(fxx, 2.0f) + 2 * powf(fxy, 2.0f) + powf(fyy, 2.0f);
           break;
       }
