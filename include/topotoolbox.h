@@ -892,7 +892,7 @@ void streamquad_trapz_f64(double *integral, double *integrand,
 
    @param[in] dims: 
 */
-void curvature(float *output, float *dem, char type, int meanfilt, int use_mp, 
+void curvature(float *output, float *dem, int type, int meanfilt, int use_mp, 
                float cellsize, ptrdiff_t dims[2]);
 
 
