@@ -107,7 +107,7 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
           // dz/dx
           fx += dem_value * (kernel1[k_row + 1][k_col + 1] / (6 * cellsize));
           // dz/dy
-          fy += dem_value * (kernel1[k_row + 1][k_col + 1] / (6 * cellsize));
+          fy += dem_value * (kernel2[k_row + 1][k_col + 1] / (6 * cellsize));
           // 2nd order derivatives according to Evans method (See Olaya 2009)
           // d2z/dx2
           fxx += dem_value *
