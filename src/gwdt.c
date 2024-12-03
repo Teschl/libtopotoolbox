@@ -254,11 +254,25 @@ void gwdt_computecosts(float *costs, ptrdiff_t *conncomps, int32_t *flats,
       float current_depth =
           filled_dem[current_pixel] - original_dem[current_pixel];
 
-      float tweight = 2.0f;
-      float CarveMinVal = 0.1f;
+      // If tweight is fixed to one, we do not need to apply the power.
+      // costs[current_pixel] - current_depth should always be positive
+      // float tweight = 1.0f;
+
+      // CarveMinVal is a double to maintain consistency with the
+      // MATLAB implementation. The right hand side is of the cost
+      // computation below is performed in double precision and
+      // rounded back to single precision to store in the `costs`
+      // array. The magnitude of rounding error when CarveMinVal is a
+      // float depends on the values of costs, current_depth and
+      // CarveMinVal and is not always intuitive. If CarveMinVal can
+      // be exactly represented as a single precision float, then the
+      // results do not depend on whether it is a single or a
+      // double. Using a double CarveMinVal does have a minor
+      // performance cost.
+      double CarveMinVal = 0.1;
 
       costs[current_pixel] =
-          powf(costs[current_pixel] - current_depth, tweight) + CarveMinVal;
+          (float)(costs[current_pixel] - current_depth + CarveMinVal);
     }
   }
 }
