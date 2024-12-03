@@ -875,6 +875,26 @@ TOPOTOOLBOX_API
 void streamquad_trapz_f64(double *integral, double *integrand,
                           ptrdiff_t *source, ptrdiff_t *target, float *weight,
                           ptrdiff_t edge_count);
+/**
+   @brief Curvature returns the second numerical derivative (curvature) of a
+   digital elevation model. By default, curvature returns the profile
+   curvature (profc). 
+
+   @param[out] output:
+
+   @param[in] type:
+
+   @param[in] meanfilt:
+
+   @param[in] use_mp:
+
+   @param[in] cellsize:
+
+   @param[in] dims: 
+*/
+void curvature(float *output, float *dem, char type, int meanfilt, int use_mp, 
+               float cellsize, ptrdiff_t dims[2]);
+
 
 /*
   Graphflood
