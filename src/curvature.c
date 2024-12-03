@@ -79,12 +79,10 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
     for (row = 0; row < dims[0]; row++) {
 #endif
       ptrdiff_t index = col * dims[0] + row;
-      /**
       if (isnan(dem[index])) {
         output[index] = 1;
         continue;
       }
-      */
       output[index] = 12;
       continue;
 
