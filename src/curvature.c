@@ -1,6 +1,7 @@
 #define TOPOTOOLBOX_BUILD
 
 #include <math.h>
+#include <limits.h>
 #include <stddef.h>
 
 #if TOPOTOOLBOX_OPENMP_VERSION > 0
@@ -79,7 +80,7 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
 #endif
       ptrdiff_t index = col * dims[0] + row;
       if (isnan(dem[index])) {
-        output[index] = NAN;
+        output[index] = INT_MAX;
         continue;
       }
 
