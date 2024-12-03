@@ -831,7 +831,9 @@ void gradient8(float *output, float *dem, float cellsize, int use_mp,
 
    @param[in] dims: 
 */
-void curvature();
+void curvature(float *output, float *dem, char type, int meanfilt, int use_mp, 
+               float cellsize, ptrdiff_t dims[2]);
+
 
 /*
   Graphflood

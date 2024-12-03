@@ -24,10 +24,7 @@ Input arguments
         1 = 'tangc' : tangential curvature [m^(-1)]
         3 = 'meanc' : mean curvature [m^(-1)]
         4 = 'total' : total curvature [m^(-2)]
-
-  useblockproc    true or {false}: use block processing
-                       (see function blockproc)
-  useparallel     true or {false}: use parallel computing toolbox
+  use_mp          true or {false}: use parallel computing toolbox
   blocksize       blocksize for blockproc (default: 5000)
   meanfilt        true or {false}: if true, preprocess DEM with
                        [3x3] mean filter.
@@ -42,14 +39,13 @@ Reference
   Original Author:  Wolfgang Schwanghart (w.schwanghart[at]geo.uni-potsdam.de)
 */
 TOPOTOOLBOX_API
-void curvature(float *output, float *dem, char type, int useplockproc,
-               int plocksize, int meanfilt, float use_mp, float cellsize,
-               ptrdiff_t dims[2]) {
+void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
+               float cellsize, ptrdiff_t dims[2]) {
   if (meanfilt) {
-    // TODO: implement mean filter
+    // TODO: implement mean filter separately
     // Should be before looping over whole array instead of on demand since
     // all neighbors have to ready before applying kernels. Raises issues
-    // with use od dem[] as values source because we cant overwrite the dem.
+    // with use of dem as value source because we cant overwrite the dem.
   }
 
   // First-order partial derivatives
@@ -82,32 +78,43 @@ void curvature(float *output, float *dem, char type, int useplockproc,
     for (row = 0; row < dims[0]; row++) {
 #endif
       ptrdiff_t index = col * dims[0] + row;
-      if (isnan(dem[index])) continue;
+      if (isnan(dem[index])) {
+        output[index] = NAN;
+        continue;
+      }
 
       // apply kernel to cell
       float fx, fy, fxx, fyy, fxy = 0;
       for (int k_col = -1; k_col <= 1; k_col++) {
         for (int k_row = -1; k_row <= 1; k_row++) {
-
           // TODO: handle NaNs and out of bounds kernel cells
+          // TODO: remove temp out of bounds skip
+          if ((col + k_col) < 0 || (row + k_row) < 0 ||
+              (col + k_col) >= dims[1] || (row + k_row) >= dims[0]) {
+                continue;
+          }
 
           ptrdiff_t true_index = (col + k_col) * dims[0] + (row + k_row);
           float dem_value = dem[true_index];
+
+          // TODO: remove temp NaN skip
+          if (isnan(dem_value)) continue;
+
           // 1st order partial derivatives:
           // dz/dx
-          fx += dem_value * (kernel1[k_row][k_col] / (6 * cellsize));
+          fx += dem_value * (kernel1[k_row + 1][k_col + 1] / (6 * cellsize));
           // dz/dy
-          fy += dem_value * (kernel1[k_row][k_col] / (6 * cellsize));
+          fy += dem_value * (kernel1[k_row + 1][k_col + 1] / (6 * cellsize));
           // 2nd order derivatives according to Evans method (See Olaya 2009)
           // d2z/dx2
-          fxx +=
-              dem_value * (kernel3[k_row][k_col] / (3 * powf(cellsize, 2.0f)));
+          fxx += dem_value *
+                 (kernel3[k_row + 1][k_col + 1] / (3 * powf(cellsize, 2.0f)));
           // d2z/dy2
-          fyy +=
-              dem_value * (kernel4[k_row][k_col] / (3 * powf(cellsize, 2.0f)));
+          fyy += dem_value *
+                 (kernel4[k_row + 1][k_col + 1] / (3 * powf(cellsize, 2.0f)));
           // s2z/dxy
-          fxy +=
-              dem_value * (kernel5[k_row][k_col] / (4 * powf(cellsize, 2.0f)));
+          fxy += dem_value *
+                 (kernel5[k_row + 1][k_col + 1] / (4 * powf(cellsize, 2.0f)));
         }
       }
 
