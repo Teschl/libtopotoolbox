@@ -85,6 +85,8 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
         continue;
       }
       */
+      output[index] = 12;
+      continue;
 
       // apply kernel to cell
       float fx, fy, fxx, fyy, fxy = 0;
