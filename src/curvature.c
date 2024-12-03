@@ -83,40 +83,41 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
         output[index] = 1;
         continue;
       }
-      output[index] = 12;
-      continue;
 
       // apply kernel to cell
       float fx, fy, fxx, fyy, fxy = 0;
       for (int k_col = -1; k_col <= 1; k_col++) {
         for (int k_row = -1; k_row <= 1; k_row++) {
+          ptrdiff_t true_index = (col + k_col) * dims[0] + (row + k_row);
+          ptrdiff_t true_row = row + k_row;
+          ptrdiff_t true_col = col + k_col;
+
           // TODO: handle NaNs and out of bounds kernel cells
           // TODO: remove temp out of bounds skip
-          if ((col + k_col) < 0 || (row + k_row) < 0 ||
-              (col + k_col) >= dims[1] || (row + k_row) >= dims[0]) {
+          if ((true_col) < 0 || (true_row) < 0 || (true_col) >= dims[1] ||
+              (true_row) >= dims[0]) {
             continue;
           }
-
-          ptrdiff_t true_index = (col + k_col) * dims[0] + (row + k_row);
-          float dem_value = dem[true_index];
-
           // TODO: remove temp NaN skip
-          if (isnan(dem_value)) continue;
+          if (isnan(dem[true_index])) continue;
 
           // 1st order partial derivatives:
           // dz/dx
-          fx += dem_value * (kernel1[k_row + 1][k_col + 1] / (6 * cellsize));
+          fx += dem[true_index] *
+                (kernel1[k_row + 1][k_col + 1] / (6 * cellsize));
           // dz/dy
-          fy += dem_value * (kernel2[k_row + 1][k_col + 1] / (6 * cellsize));
+          fy += dem[true_index] *
+                (kernel2[k_row + 1][k_col + 1] / (6 * cellsize));
+              
           // 2nd order derivatives according to Evans method (See Olaya 2009)
           // d2z/dx2
-          fxx += dem_value *
+          fxx += dem[true_index] *
                  (kernel3[k_row + 1][k_col + 1] / (3 * powf(cellsize, 2.0f)));
           // d2z/dy2
-          fyy += dem_value *
+          fyy += dem[true_index] *
                  (kernel4[k_row + 1][k_col + 1] / (3 * powf(cellsize, 2.0f)));
           // s2z/dxy
-          fxy += dem_value *
+          fxy += dem[true_index] *
                  (kernel5[k_row + 1][k_col + 1] / (4 * powf(cellsize, 2.0f)));
         }
       }
