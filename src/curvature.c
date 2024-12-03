@@ -1,7 +1,7 @@
 #define TOPOTOOLBOX_BUILD
 
-#include <math.h>
 #include <limits.h>
+#include <math.h>
 #include <stddef.h>
 
 #if TOPOTOOLBOX_OPENMP_VERSION > 0
@@ -79,10 +79,12 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
     for (row = 0; row < dims[0]; row++) {
 #endif
       ptrdiff_t index = col * dims[0] + row;
+      /**
       if (isnan(dem[index])) {
-        output[index] = INT_MAX;
+        output[index] = 1;
         continue;
       }
+      */
 
       // apply kernel to cell
       float fx, fy, fxx, fyy, fxy = 0;
@@ -92,7 +94,7 @@ void curvature(float *output, float *dem, int type, int meanfilt, int use_mp,
           // TODO: remove temp out of bounds skip
           if ((col + k_col) < 0 || (row + k_row) < 0 ||
               (col + k_col) >= dims[1] || (row + k_row) >= dims[0]) {
-                continue;
+            continue;
           }
 
           ptrdiff_t true_index = (col + k_col) * dims[0] + (row + k_row);
